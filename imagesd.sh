@@ -92,10 +92,9 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2013-2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="2.2.0"
+CONFIG_version="2.3.0"
 CONFIG_commands=('du') # Array of generally needed commands
-CONFIG_commands_run=('sync' 'dd') # Array of commands for full running
-CONFIG_commands_run1=('blockdev' 'pv') # Array of commands for special running
+CONFIG_commands_run=('sync' 'dd' 'blockdev' 'pv') # Array of commands for full running
 CONFIG_commands_dryrun=('touch') # Array of commands for dry running
 CONFIG_level_verbose=3	# Level of verbosity to console - 0=none, 1=error, 2=mail, 3=info, 4=function, 5=full
 CONFIG_flag_root=1	# Check root privileges flag
@@ -270,6 +269,7 @@ TIME_start=$(date +%s)
 stop_services ${CONFIG_services[@]}
 echo_text -h -$CONST_level_verbose_mail "Backup Start Time $(date +"%F %T")."
 BACKUP_FILE="${CONFIG_backup_dir}/${CONFIG_backup_file_prefix}$(date +${CONFIG_timestamp_format})${CONFIG_backup_file_suffix}"
+BACKUP_FILE="$(echo "${BACKUP_FILE}" | tr -s '/')"
 log_text -$CONST_level_logging_info "Backup started to '${BACKUP_FILE}'."
 echo_text -s -$CONST_level_verbose_mail "Creating image file '${BACKUP_FILE}'$(dryrun_token) ... Can take several minutes."
 if [ $CONFIG_flag_dryrun -eq 1 ]

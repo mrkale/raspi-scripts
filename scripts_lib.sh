@@ -26,7 +26,7 @@ fi
 # -> BEGIN Library configs
 LIB_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
 LIB_script=$(basename $0)
-LIB_version="0.1.0"
+LIB_version="0.1.1"
 LIB_options=":hsVcmvo:l:f:t:"
 # <- END Library configs
 
@@ -671,9 +671,9 @@ Options and arguments:
   -V			Version: show version information and exit
   -c			configs: print listing of all configuration parameters
   -l log_level		logging: level of logging intensity to syslog
-			0=none, 1=errors (default), 2=warnings, 3=info, 4=full
+			0=none, 1=errors, 2=warnings, 3=info, 4=full (default ${CONFIG_level_logging})
   -o verbose_level	output: level of verbosity
-			0=none, 1=errors (default), 2=mails, 3=info, 4=functions, 5=full
+			0=none, 1=errors, 2=mails, 3=info, 4=functions, 5=full (default ${CONFIG_level_verbose})
   -m			mailing: display all processing messages; alias for '-o${CONST_level_verbose_mail}'
   -v			verbose: display all processing messages; alias for '-o${CONST_level_verbose_max}'
   -f config_file	file: configuration file to be used
