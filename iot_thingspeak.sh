@@ -28,41 +28,6 @@
 # - The warning temperature limit is the 80% (configurable) of that maximal temperature.
 # - The current temperature is read from /sys/class/thermal/thermal_zone0/temp.
 #
-# OPTIONS & ARGS:
-#   -h
-#       Help. Show usage description and exit.
-#   -s
-#       Simmulation. Perform dry run just with output messages and log files.
-#   -V
-#       Version. Show version and copyright information and exit.
-#   -c
-#       Configs. Print listing of all configuration parameters.
-#   -l LoggingLevel
-#		Logging. Level of logging intensity to syslog
-#		0=none, 1=errors (default), 2=warnings, 3=info, 4=full
-#   -o VerboseLevel
-#       Output. Level of verbose intensity.
-#		0=none, 1=errors, 2=mails, 3=info (default), 4=functions, 5=full
-#   -m
-#       Mailing. Display processing messages suitable for emailing from cron.
-#       It is an alias for '-o2'.
-#   -v
-#       Verbose. Display all processing messages.
-#       It is an alias for '-o5'.
-#   -f ConfigFile
-#       File. Configuration file for overriding default configuration parameters.
-#   -t StatusFile
-#       Tick. File for writing working status of the script.
-#       Should be located in temporary file system.
-#   -S
-#       Sensors. List all sensor parameters.
-#   -1
-#      Force warning. Simulate reaching warning temperature.
-#   -2
-#      Force error. Simulate reading exactly maximal temperature.
-#   -3
-#      Force fatal. Simulate exceeding shutdown temperature.
-#
 # LICENSE:
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -94,8 +59,8 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.2.0"
-CONFIG_commands=('rrdtool') # List of commands for full running
+CONFIG_version="0.2.1"
+CONFIG_commands=('rrdtool') # List of general commands
 CONFIG_commands_run=('curl') # List of commands for full running
 #
 CONFIG_fieldnum_min=1
@@ -166,7 +131,7 @@ read_ds18b20 () {
 		temp=${temp##*t=}
 		temp=${temp%% }
 		fieldnum=${CONFIG_sensors_ds18b20[$address]}
-		if [ -n "$fieldnum" ]
+		if [[ -n "$fieldnum" && -n "$temp" ]]
 		then
 			tempArray+=([$fieldnum]=$temp)
 		fi
@@ -200,7 +165,7 @@ write_thingspeak () {
 	# Process data part
 	if [[ -n "$reqdata" ]]
 	then
-		reqdata="${reqdata:1}"
+		reqdata="${reqdata:1}"	# Remove initial '&'
 	fi
 	# Compose HTTP request
 	echo_text -f -$CONST_level_verbose_function "Logging to ThingSpeak$(dryrun_token) ... $reqdata"

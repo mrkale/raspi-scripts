@@ -10,6 +10,9 @@
 # Script is used as one place for shared functions and variables including configuration ones
 # for production scripts. Those utility functions are maintained at one place for all scripts.
 #
+# - Some predefined command line options can be forbidden by enumerating them
+#   in the array 'LIB_options_exclude' one by one.
+#
 # LICENSE:
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,8 +29,15 @@ fi
 # -> BEGIN Library configs
 LIB_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
 LIB_script=$(basename $0)
-LIB_version="0.1.1"
+LIB_version="0.3.0"
+# Process default options
+# LIB_options_exclude=( 't' )	# Put such a line in a main script at the very begining of it
 LIB_options=":hsVcmvo:l:f:t:"
+for opt in ${LIB_options_exclude[@]}
+do
+	LIB_options=${LIB_options//$opt:}
+	LIB_options=${LIB_options//$opt}
+done
 # <- END Library configs
 
 # -> BEGIN Common working configs
@@ -666,19 +676,59 @@ process_help () {
 		o)
 			help="
 Options and arguments:
-  -h			help: show this help and exit
-  -s			simulate: perform dry run without writing to Google Analytics
-  -V			Version: show version information and exit
-  -c			configs: print listing of all configuration parameters
-  -l log_level		logging: level of logging intensity to syslog
-			0=none, 1=errors, 2=warnings, 3=info, 4=full (default ${CONFIG_level_logging})
-  -o verbose_level	output: level of verbosity
-			0=none, 1=errors, 2=mails, 3=info, 4=functions, 5=full (default ${CONFIG_level_verbose})
-  -m			mailing: display all processing messages; alias for '-o${CONST_level_verbose_mail}'
-  -v			verbose: display all processing messages; alias for '-o${CONST_level_verbose_max}'
-  -f config_file	file: configuration file to be used
-  -t status_file	tick: file for writing working status
 "
+			if [[ $LIB_options == *h* ]]
+			then
+				help+="
+  -h			help: show this help and exit"
+ 			fi
+			if [[ $LIB_options == *V* ]]
+			then
+				help+="
+  -V			Version: show version information and exit"
+ 			fi
+			if [[ $LIB_options == *c* ]]
+			then
+				help+="
+  -c			configs: print listing of all configuration parameters"
+ 			fi
+			if [[ $LIB_options == *l* ]]
+			then
+				help+="
+  -l log_level		logging: level of logging intensity to syslog
+			0=none, 1=errors, 2=warnings, 3=info, 4=full (default ${CONFIG_level_logging})"
+ 			fi
+			if [[ $LIB_options == *o* ]]
+			then
+				help+="
+  -o verbose_level	output: level of verbosity
+			0=none, 1=errors, 2=mails, 3=info, 4=functions, 5=full (default ${CONFIG_level_verbose})"
+ 			fi
+			if [[ $LIB_options == *m* ]]
+			then
+				help+="
+  -m			mailing: display all processing messages; alias for '-o${CONST_level_verbose_mail}'"
+ 			fi
+			if [[ $LIB_options == *v* ]]
+			then
+				help+="
+  -v			verbose: display all processing messages; alias for '-o${CONST_level_verbose_max}'"
+ 			fi
+			if [[ $LIB_options == *s* ]]
+			then
+				help+="
+  -s			simulate: perform dry run without real permanent actions (writing, deleting, ...)"
+ 			fi
+			if [[ $LIB_options == *f* ]]
+			then
+				help+="
+  -f config_file	file: configuration file to be used"
+			fi
+			if [[ $LIB_options == *t* ]]
+			then
+				help+="
+  -t status_file	tick: file for writing working status"
+			fi
 			;;
 		f)
 			help="
