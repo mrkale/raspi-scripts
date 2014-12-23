@@ -28,33 +28,6 @@
 # - The warning temperature limit is the 80% (configurable) of that maximal temperature.
 # - The current temperature is read from /sys/class/thermal/thermal_zone0/temp.
 #
-# OPTIONS & ARGS:
-#   -h
-#       Help. Show usage description and exit.
-#   -s
-#       Simmulation. Perform dry run just with output messages and log files.
-#   -V
-#       Version. Show version and copyright information and exit.
-#   -c
-#       Configs. Print listing of all configuration parameters.
-#   -l LoggingLevel
-#		Logging. Level of logging intensity to syslog
-#		0=none, 1=errors (default), 2=warnings, 3=info, 4=full
-#   -o VerboseLevel
-#       Output. Level of verbose intensity.
-#		0=none, 1=errors, 2=mails, 3=info (default), 4=functions, 5=full
-#   -m
-#       Mailing. Display processing messages suitable for emailing from cron.
-#       It is an alias for '-o2'.
-#   -v
-#       Verbose. Display all processing messages.
-#       It is an alias for '-o5'.
-#   -f ConfigFile
-#       File. Configuration file for overriding default configuration parameters.
-#   -t StatusFile
-#       Tick. File for writing working status of the script.
-#       Should be located in temporary file system.
-#
 # LICENSE:
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -86,7 +59,7 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.1.0"
+CONFIG_version="0.@.0"
 CONFIG_commands=('rrdtool' 'chown') # List of commands for full running
 #
 CONFIG_rrd_file="${CONFIG_script%\.*}.rrd"	# Round Robin Database file
@@ -117,7 +90,7 @@ $(process_help -f)
 
 # @info:	Create RRD graph
 # @opts:	-t title ... name of a graph prefixed with hostname in uppercase (default none)
-#			-d data ... name of the DS variable in RRD
+#			-d data  ... name of the DS variable in RRD
 #			-l label ... descriptive name of the DS variable (default "Temperature")
 #			-c color ... color of the line in pattern RRGGBB (default "FF0000")
 #			-w width ... width of the line in pixels (default 1)
@@ -267,12 +240,29 @@ GRAPH_file_root="$(echo "${GRAPH_file_root}" | tr -s '/')"
 GRAPH_file="${GRAPH_file_root}_soc_24h.${CONFIG_graph_ext}"
 create_graph_line_single \
 	-t "SoC Temperature" \
-	-d temp_soc \
+	-d temp1 \
 	-w 2 \
 	"$GRAPH_file"
-# Change graph file ownership
+
+# Line graph with waterproof sensor temperature for last 24 hours
+GRAPH_file="${GRAPH_file_root}_wp_24h.${CONFIG_graph_ext}"
+create_graph_line_single \
+	-t "Waterproof DS18B20 Temperature" \
+	-d temp2 \
+	-w 2 \
+	"$GRAPH_file"
+
+# Line graph with module sensor temperature for last 24 hours
+GRAPH_file="${GRAPH_file_root}_module_24h.${CONFIG_graph_ext}"
+create_graph_line_single \
+	-t "DS18B20 Module Temperature" \
+	-d temp3 \
+	-w 2 \
+	"$GRAPH_file"
+
+# Change ownership of all graph files
 if [ $CONFIG_flag_dryrun -eq 0 ]
 then
-	chown ${CONFIG_graph_owner}:${CONFIG_graph_group} "$GRAPH_file"
+	chown ${CONFIG_graph_owner}:${CONFIG_graph_group} "${GRAPH_file_root}"*."${CONFIG_graph_ext}"
 fi
 # End of script processed by TRAP

@@ -53,16 +53,15 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.1.0"
+CONFIG_version="0.1.1"
 CONFIG_commands_run=('curl') # List of commands for full running
 #
-declare -A CONFIG_sensors_soc=([0]="SoC")	# stream[0]
-declare -A CONFIG_sensors_ds18b20=([28-000001b46e0e]="Lobby")	# stream[Address]
-# declare -A CONFIG_sensors_ds18b20=([28-000001b46e0e]="Room1" [28-000001b46e1e]="Room2")	# stream[Address]
+CONFIG_sensors_soc="SoC"	# System sensor stream
+declare -A CONFIG_sensors_ds18b20=()	# [stream]=Address
 CONFIG_initialstate_url="https://groker.initialstate.com/batch_logs"
-CONFIG_initialstate_apikey="baGwkZMbLpeo4QtEFRKRjksILn8QzjXE"
-CONFIG_initialstate_bucket_id="03fd6631-01b0-49ce-9ca7-c7881e3cca5f"
-CONFIG_initialstate_bucket_name="TestBucketLG"
+CONFIG_initialstate_apikey=""
+CONFIG_initialstate_bucket_id=""
+CONFIG_initialstate_bucket_name=""
 CONFIG_flag_print_sensors=0              # List sensor parameters flag
 # <- END _config
 
@@ -89,14 +88,14 @@ $(process_help -f)
 }
 
 # @info:	Read SoC temperature in milidegrees Celsius
-# @args:	Associative array temp[fieldnum]
-# @return:	System temperature
+# @args:	CONFIG_sensors_soc
+# @return:	System temperature array temp[stream]
 # @deps:	none
 read_soc () {
 	local temp stream
 	temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
-	stream=${CONFIG_sensors_soc[0]}
-	local -A tempArray=(["$stream"]=$temp)
+	stream=${CONFIG_sensors_soc}
+	local -A tempArray=([$stream]=$temp)
 	tempArray=$(declare -p tempArray)
 	tempArray=${tempArray#*=}
 	tempArray=${tempArray//\'}
@@ -104,8 +103,8 @@ read_soc () {
 }
 
 # @info:	Read DS18B20 temperatures in milidegrees Celsius
-# @args:	none
-# @return:	Associative array temp[fieldnum]
+# @args:	CONFIG_sensors_ds18b20 associative array
+# @return:	Associative array temp[stream]
 # @deps:	none
 read_ds18b20 () {
 	local temp address stream
@@ -117,10 +116,18 @@ read_ds18b20 () {
 		temp=$(cat $file | tr "\\n" " " | grep "YES")
 		temp=${temp##*t=}
 		temp=${temp%% }
-		stream=${CONFIG_sensors_ds18b20[$address]}
+		stream=""
+		for s in "${!CONFIG_sensors_ds18b20[@]}"
+		do
+			if [ "${CONFIG_sensors_ds18b20[$s]}" == "$address" ]
+			then
+				stream=$s
+				break
+			fi
+		done
 		if [[ -n "$stream" && -n "$temp" ]]
 		then
-			tempArray+=(["$stream"]=$temp)
+			tempArray+=([$stream]=$temp)
 		fi
 	done
 	tempArray=$(declare -p tempArray)
@@ -134,7 +141,7 @@ read_ds18b20 () {
 # @return:	curl exit code
 # @deps:	global SENSOR_temps variable
 write_initialstate () {
-	local temp objdata reqdata result=0
+	local temp objdata reqdata result=0 epoch=$(date +%s)
 	# Compose data part of the HTTP request
 	for stream in ${!SENSOR_temps[@]}
 	do
@@ -151,7 +158,7 @@ write_initialstate () {
 			# Stream name
 			objdata+="${objdata:+,}\"sn\":\"$stream\""
 			# Stream epoche time
-			objdata+="${objdata:+,}\"e\":$(date +%s)"
+			objdata+="${objdata:+,}\"e\":$epoch"
 			# Stream value
 			objdata+="${objdata:+,}\"v\":${temp}"
 			# Add to JSON array
@@ -241,7 +248,7 @@ declare -A SENSOR_temps+=$(read_ds18b20)
 # Print sensor parameters
 if [[ $CONFIG_flag_print_sensors -eq 1 ]]
 then
-	echo_text -hb -$CONST_level_verbose_none "Sensors array 'temp_in_milidegCelsius[FieldNum]':"
+	echo_text -hb -$CONST_level_verbose_none "Sensors array 'temp_in_milidegCelsius[stream]':"
 	echo_text -sa -$CONST_level_verbose_none "$(declare -p SENSOR_temps)"
 fi
 

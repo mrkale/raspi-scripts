@@ -7,8 +7,7 @@
 #   iot_thingspeak.sh [OPTION [ARG]] [RRD_file]
 #
 # DESCRIPTION:
-# Script checks the internal temperature of the CPU and warns or shuts down the system
-# if temperature limits are exceeded.
+# Script measures internal temperature of the CPU as well as temperature from DS18B20 sensors.
 # - Script has to be run under root privileges (sudo ...).
 # - Script is supposed to run under cron.
 # - Script logs to "user.log".
@@ -21,12 +20,10 @@
 #   Their description is provided locally. Script can be configured by changing values of them.
 # - Configuration parameters in the script can be overriden by the corresponding ones
 #   in a configuration file declared in the command line.
-# - In simulation mode the script ommits shutting down the system.
-# - The halting (shutdown) temperature limit is the 95% (configurable)
-#   of maximal temperature written in
-#   /sys/class/thermal/thermal_zone0/trip_point_0_temp.
-# - The warning temperature limit is the 80% (configurable) of that maximal temperature.
-# - The current temperature is read from /sys/class/thermal/thermal_zone0/temp.
+# - Script writes temperatures to Round Robin Database as well.
+# - If RRD file does not exist yet, the script creates one with 8 data sources for maximum
+#   number of fields (channels) in ThingSpeak web service.
+# - For not used temperature sensors (ThingSpeak channels) the script writes unknown (U) value to RRD.
 #
 # LICENSE:
 # This program is free software; you can redistribute it and/or modify
@@ -59,14 +56,14 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.3.0"
+CONFIG_version="0.4.0"
 CONFIG_commands=('rrdtool') # List of general commands
 CONFIG_commands_run=('curl') # List of commands for full running
 #
 CONFIG_fieldnum_min=1
 CONFIG_fieldnum_max=8
-CONFIG_sensors_soc=1	# System sensor
-CONFIG_sensors_ds18b20+=([2]="28-*")	# Address[fieldnum]
+CONFIG_sensors_soc=1	# System sensor fieldnum
+declare -a CONFIG_sensors_ds18b20=()	# [fieldnum]=address
 CONFIG_thingspeak_url="https://api.thingspeak.com/update"
 CONFIG_thingspeak_apikey=""
 CONFIG_flag_print_sensors=0              # List sensor parameters flag
@@ -130,7 +127,7 @@ read_ds18b20 () {
 		temp=${temp##*t=}
 		temp=${temp%% }
 		fieldnum=""
-		for (( i=$CONFIG_fieldnum_min; i <= $CONFIG_fieldnum_max; i++ ))
+		for i in "${!CONFIG_sensors_ds18b20[@]}"
 		do
 			if [ "${CONFIG_sensors_ds18b20[$i]}" == "$address" ]
 			then
@@ -213,22 +210,15 @@ write_thingspeak () {
 #	Daily minimals for last 7 days
 #	Daily minimals for last 30 days
 #	Daily minimals for last 180 days	
-# @args:	none
+# @args:	SENSOR_temps indexed array temp[fieldnum]
 # @return:	none
 # @deps:	none
 create_rrd_file () {
 	local dslist
 	echo_text -f -$CONST_level_verbose_function "Creating RRD file '${CONFIG_rrd_file}' with data streams:"
-	for (( fieldnum=1; fieldnum<=${#SENSOR_temps[@]}; fieldnum++ ))
+	for (( fieldnum=${CONFIG_fieldnum_min}; fieldnum<=${CONFIG_fieldnum_max}; fieldnum++ ))
 	do
-		case "$fieldnum" in
-		1)
-			dslist+=" DS:temp_soc:GAUGE:$(( ${CONFIG_rrd_step} * ${CONFIG_rrd_hartbeat} )):20000:90000"
-			;;
-		2)
-			dslist+=" DS:temp_ds01:GAUGE:$(( ${CONFIG_rrd_step} * ${CONFIG_rrd_hartbeat} )):0:40000"
-			;;
-		esac
+		dslist+=" DS:temp${fieldnum}:GAUGE:$(( ${CONFIG_rrd_step} * ${CONFIG_rrd_hartbeat} )):-55000:125000"
 	done
 	echo_text -s -$CONST_level_verbose_function "${dslist## }"
 	# Create RRD
@@ -320,9 +310,9 @@ fi
 
 # Write temperature into RRD
 RRDcmd="rrdtool update ${CONFIG_rrd_file} N"
-for temp in ${SENSOR_temps[@]}
+for (( fieldnum=${CONFIG_fieldnum_min}; fieldnum<=${CONFIG_fieldnum_max}; fieldnum++ ))
 do
-	RRDcmd+=":${temp}"
+	RRDcmd+=":${SENSOR_temps[$fieldnum]:-U}"
 done
 echo_text -h -$CONST_level_verbose_info "RRD command for storing temperature in milidegrees Celsius:"
 echo_text -s  -$CONST_level_verbose_info "$RRDcmd"
