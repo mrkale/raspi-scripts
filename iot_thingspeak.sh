@@ -59,15 +59,14 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.2.1"
+CONFIG_version="0.3.0"
 CONFIG_commands=('rrdtool') # List of general commands
 CONFIG_commands_run=('curl') # List of commands for full running
 #
 CONFIG_fieldnum_min=1
 CONFIG_fieldnum_max=8
-declare -A CONFIG_sensors_soc=([0]=1)	# fieldnum[0]
-declare -A CONFIG_sensors_ds18b20=([28-*]=2)	# fieldnum[Address]
-# declare -A CONFIG_sensors_ds18b20=([28-000001b46e0e]=2 [28-000001b46e1e]=3 [28-000001b46e2e]=4)	# fieldnum[Address]
+CONFIG_sensors_soc=1	# System sensor
+CONFIG_sensors_ds18b20+=([2]="28-*")	# Address[fieldnum]
 CONFIG_thingspeak_url="https://api.thingspeak.com/update"
 CONFIG_thingspeak_apikey=""
 CONFIG_flag_print_sensors=0              # List sensor parameters flag
@@ -108,7 +107,7 @@ $(process_help -f)
 read_soc () {
 	local temp fieldnum
 	temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
-	fieldnum=${CONFIG_sensors_soc[0]}
+	fieldnum=${CONFIG_sensors_soc}
 	local -A tempArray=([$fieldnum]=$temp)
 	tempArray=$(declare -p tempArray)
 	tempArray=${tempArray#*=}
@@ -130,7 +129,15 @@ read_ds18b20 () {
 		temp=$(cat $file | tr "\\n" " " | grep "YES")
 		temp=${temp##*t=}
 		temp=${temp%% }
-		fieldnum=${CONFIG_sensors_ds18b20[$address]}
+		fieldnum=""
+		for (( i=$CONFIG_fieldnum_min; i <= $CONFIG_fieldnum_max; i++ ))
+		do
+			if [ "${CONFIG_sensors_ds18b20[$i]}" == "$address" ]
+			then
+				fieldnum=$i
+				break
+			fi
+		done
 		if [[ -n "$fieldnum" && -n "$temp" ]]
 		then
 			tempArray+=([$fieldnum]=$temp)
@@ -151,7 +158,7 @@ write_thingspeak () {
 	# Compose data part of the HTTP request
 	for fieldnum in ${!SENSOR_temps[@]}
 	do
-		if [[ $fieldnum -ge $CONFIG_fieldnum_min && $fieldnum -le CONFIG_fieldnum_max ]]
+		if [[ $fieldnum -ge $CONFIG_fieldnum_min && $fieldnum -le $CONFIG_fieldnum_max ]]
 		then
 			temp=${SENSOR_temps[$fieldnum]}
 			temp="${temp// }"
