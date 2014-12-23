@@ -7,8 +7,7 @@
 #   rrd_graph_temp.sh [OPTION [ARG]] RRD_file [Graph_dir]
 #
 # DESCRIPTION:
-# Script checks the internal temperature of the CPU and warns or shuts down the system
-# if temperature limits are exceeded.
+# Script generates graphs from Round Robin Database and puts them into web server documents folder.
 # - Script has to be run under root privileges (sudo ...).
 # - Script is supposed to run under cron.
 # - Script logs to "user.log".
@@ -21,12 +20,7 @@
 #   Their description is provided locally. Script can be configured by changing values of them.
 # - Configuration parameters in the script can be overriden by the corresponding ones
 #   in a configuration file declared in the command line.
-# - In simulation mode the script ommits shutting down the system.
-# - The halting (shutdown) temperature limit is the 95% (configurable)
-#   of maximal temperature written in
-#   /sys/class/thermal/thermal_zone0/trip_point_0_temp.
-# - The warning temperature limit is the 80% (configurable) of that maximal temperature.
-# - The current temperature is read from /sys/class/thermal/thermal_zone0/temp.
+# - In simulation mode the script generates graph pictures to folder '/tmp'.
 #
 # LICENSE:
 # This program is free software; you can redistribute it and/or modify
@@ -59,7 +53,7 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.@.0"
+CONFIG_version="0.2.1"
 CONFIG_commands=('rrdtool' 'chown') # List of commands for full running
 #
 CONFIG_rrd_file="${CONFIG_script%\.*}.rrd"	# Round Robin Database file
