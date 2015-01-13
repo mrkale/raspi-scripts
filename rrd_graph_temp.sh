@@ -53,7 +53,7 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.4.1"
+CONFIG_version="0.4.2"
 CONFIG_commands=('rrdtool' 'chown' 'awk' 'md5sum') # List of commands for full running
 #
 CONFIG_rrd_file="${CONFIG_script%\.*}.rrd"	# Round Robin Database file
@@ -66,29 +66,12 @@ CONFIG_graph_owner="www-data"	# Graph picture file owner to set after generation
 CONFIG_graph_group="www-data"	# Graph picture file group to set after generation
 # <- END _config
 
-# -> BEGIN _graph definitions
-# Placeholder for variables read from definition files and put to graph creation function
-GRAPH_tag=""
-GRAPH_file_root=""
-# From definition file
-GRAPH_title=""
-GRAPH_axisy=""
-GRAPH_desc=""
-GRAPH_start=""
-GRAPH_data=""
-GRAPH_fnc=""
-GRAPH_label=""
-GRAPH_unit=""
-GRAPH_color=""
-GRAPH_width=""
-# -> END _graph definitions
-
 # -> BEGIN _functions
 
 # @info:	Display usage description
-# @args:	(none)
-# @return:	(none)
-# @deps:	(none)
+# @args:	none
+# @return:	none
+# @deps:	none
 show_help () {
 	echo
 	echo "${CONFIG_script} [OPTION [ARG]] RRD_file [output_dir]"
@@ -104,160 +87,80 @@ $(process_help -f)
 }
 
 # @info:	Create RRD graph
-# @opts:	-t title    ... name of a graph prefixed with hostname in uppercase (default none)
-#			-y yaxis    ... vertical axis label of a graph (default "Measurement")
-#			-s start    ... start AT-STYLE time expression (default "-1d")
-#			-d data     ... name of the DS variable in RRD
-#			-f function ... RRD cumulative function (default "AVERAGE")
-#			-l label    ... descriptive name of the DS variable (default "Temperature")
-#			-u unit     ... measurement unit (default "°C")
-#			-c color    ... color of the line in pattern RRGGBB (default "FF0000")
-#			-w width    ... width of the line in pixels (default 1)
+# @opts:	none
 # @args:	none
 # @return:	none
 # @deps:	none
 create_graph_line () {
-	local function="AVERAGE" time="-1d" unit="°C" width="1"
-	local axisy="Measurement" label="Temperature" color="FF0000"
 	local system="$(hostname)"
 	local title="${system^^*}"
-	local file graph_cmd data ds vname ifunction iwidth icolor ilabel
-	local OPTIND opt
-	# Process input parameters
-	while getopts ":t:y:s:d:f:l:u:c:w:" opt
+	local graph_cmd vname j
+	# Casting graph parameters lists to arrays
+	GRAPH_start=( $GRAPH_start )
+	GRAPH_data=( $GRAPH_data )
+	GRAPH_fnc=( $GRAPH_fnc )
+	GRAPH_label=( $GRAPH_label )
+	GRAPH_unit=( $GRAPH_unit )
+	GRAPH_color=( $GRAPH_color )
+	GRAPH_width=( $GRAPH_width )
+	# Creating graph command
+	echo_text -f -$CONST_level_verbose_function "Creating RRD graph '${GRAPH_file}'$(dryrun_token)."
+	graph_cmd="rrdtool graph ${GRAPH_file}"
+	graph_cmd+=" --start=${GRAPH_start}"
+	graph_cmd+=" --imgformat=PNG"
+	graph_cmd+=" --title=\"$title - ${GRAPH_title}\""
+	graph_cmd+=" --vertical-label=\"${GRAPH_axisy}\""
+	graph_cmd+=" --alt-autoscale"
+	graph_cmd+=" --alt-y-grid"
+	# graph_cmd+=" --slope-mode"
+	# Process graphs variables
+	for (( i=0; i < ${#GRAPH_data[@]}; i++ ))
 	do
-		case "$opt" in
-		t)
-			title+=" - $OPTARG"
-			;;
-		y)
-			axisy="$OPTARG"
-			;;
-		s)
-			time="$OPTARG"
-			;;
-		d)
-			data="$OPTARG"
-			;;
-		f)
-			function="$OPTARG"
-			;;
-		l)
-			label="$OPTARG"
-			;;
-		u)
-			unit="$OPTARG"
-			;;
-		c)
-			color="$OPTARG"
-			;;
-		w)
-			width="$OPTARG"
-			;;
-		:)
-			msg="Missing argument for option '-$OPTARG'."
-			fatal_error "$msg"
-		esac
-	done
-	shift $(($OPTIND-1))
-	file="$1"
-	# Test and process variables
-	for ds in ${data}
-	do
+		# Syncronize graph parameters arrays with data array
+		(( j = i - 1 ))
+		vname=${GRAPH_data[$i]}_01
+		GRAPH_fnc[$i]=${GRAPH_fnc[$i]:=${GRAPH_fnc[$j]}}
+		GRAPH_label[$i]=${GRAPH_label[$i]:=${GRAPH_label[$j]}}
+		GRAPH_unit[$i]=${GRAPH_unit[$i]:=${GRAPH_unit[$j]}}
+		GRAPH_color[$i]=${GRAPH_color[$i]:=${GRAPH_color[$j]}}
+		GRAPH_width[$i]=${GRAPH_width[$i]:=${GRAPH_width[$j]}}
 		# Check variable presence in RRD
-		echo_text -fp -$CONST_level_verbose_function "Checking variable '${ds}' ... "
-		rrdtool fetch "${CONFIG_rrd_file}" ${function} --start end+0 | head -1 | grep -w ${ds} >/dev/null
+		echo_text -fp -$CONST_level_verbose_function "Checking variable '${GRAPH_data[$i]}' ... "
+		rrdtool fetch "${CONFIG_rrd_file}" ${GRAPH_fnc[$i]} --start end+0 | head -1 | grep -w ${GRAPH_data[$i]} >/dev/null
 		if [ $? -eq 0 ]
 		then
 			echo_text -$CONST_level_verbose_function "valid. Proceeding."
 		else
 			echo_text -$CONST_level_verbose_function "invalid. Ignoring."
-			data+=" "
-			data=${data/${ds} /}
-			data=${data%% }
+			break
 		fi
-		# Create variable definition
-	done
-	# Chech if remains at least one variable
-	if [ -z "${data}" ]
-	then
-		return 
-	fi
-	# Creating graph command options
-	echo_text -f -$CONST_level_verbose_function "Creating RRD graph '${file}'$(dryrun_token)."
-	graph_cmd="rrdtool graph ${file}"
-	graph_cmd+=" --start=${time}"
-	graph_cmd+=" --imgformat=PNG"
-	graph_cmd+=" --title=\"${title}\""
-	graph_cmd+=" --vertical-label=\"${axisy}\""
-	graph_cmd+=" --alt-autoscale"
-	graph_cmd+=" --alt-y-grid"
-	# graph_cmd+=" --slope-mode"
-	# Casting multi parameters to arrays
-	data=( $data )
-	function=( $function )
-	label=( $label )
-	unit=( $unit )
-	color=( $color )
-	width=( $width )
-	for (( i=0; i < ${#data[@]}; i++ ))
-	do
-		idata=${data[$i]}
-		vname=${idata}_01
-		# Use synchronized tokens with data tokens
-		ifunction=${function[$i]:-$ifunction}
-		ilabel=${label[$i]:-$ilabel}
-		iunit=${unit[$i]:-$iunit}
-		icolor=${color[$i]:-$icolor}
-		iwidth=${width[$i]:-$iwidth}
-		# Create graph clauses
-		graph_cmd+=" DEF:${idata}=${CONFIG_rrd_file}:${idata}:${ifunction}"
-		graph_cmd+=" CDEF:${vname}=${idata},1000,/"
-		graph_cmd+=" LINE${iwidth}:${vname}#${icolor}:\"${ilabel}\c\""
-		graph_cmd+=" GPRINT:${vname}:MIN:\"Min\: %3.1lf${iunit}\""
-		graph_cmd+=" GPRINT:${vname}:LAST:\"%3.1lf${iunit}\""
-		graph_cmd+=" GPRINT:${vname}:MAX:\"Max\: %3.1lf${iunit}\j\""
+		# Create data clauses
+		graph_cmd+=" DEF:${GRAPH_data[$i]}=${CONFIG_rrd_file}:${GRAPH_data[$i]}:${GRAPH_fnc[$i]}"
+		graph_cmd+=" CDEF:${vname}=${GRAPH_data[$i]},1000,/"
+		graph_cmd+=" LINE${GRAPH_width[$i]}:${vname}#${GRAPH_color[$i]}:\"${GRAPH_label[$i]}\c\""
+		graph_cmd+=" GPRINT:${vname}:MIN:\"Min\: %3.1lf${GRAPH_unit[$i]}\""
+		graph_cmd+=" GPRINT:${vname}:LAST:\"%3.1lf${GRAPH_unit[$i]}\""
+		graph_cmd+=" GPRINT:${vname}:MAX:\"Max\: %3.1lf${GRAPH_unit[$i]}\j\""
 	done
 	# echo_text -f -$CONST_level_verbose_function "$graph_cmd"
 	eval ${graph_cmd} >/dev/null
 }
 
-# @info:	Intialize graph definition variables
-# @opts:	-I ... initialize variables
-#			-E ... erase variables
-# @return:	(none)
-# @deps:	(none)
-init_graphvars () {
-	local OPTIND opt
-	while getopts ":IE" opt
-	do
-		case "$opt" in
-		I)
-			GRAPH_title="Temperature Graph"
-			GRAPH_axisy="Measurement"
-			GRAPH_desc=""
-			GRAPH_start="-1d"
-			GRAPH_data="temp1"
-			GRAPH_fnc="AVERAGE"
-			GRAPH_label="Temperature"
-			GRAPH_unit="°C"
-			GRAPH_color="FF0000"
-			GRAPH_width=1
-			;;
-		E)
-			GRAPH_title=""
-			GRAPH_axisy=""
-			GRAPH_desc=""
-			GRAPH_start=""
-			GRAPH_data=""
-			GRAPH_fnc=""
-			GRAPH_label=""
-			GRAPH_unit=""
-			GRAPH_color=""
-			GRAPH_width=0
-			;;
-		esac
-	done
+# @info:	Setup of default graph definition variables
+# @opts:	none
+# @return:	none
+# @deps:	none
+default_graphvars () {
+	GRAPH_title="Temperature Graph"
+	GRAPH_axisy="Measurement"
+	GRAPH_desc=""
+	GRAPH_start="-1d"
+	GRAPH_data="temp1"
+	GRAPH_fnc="AVERAGE"
+	GRAPH_label="Temperature"
+	GRAPH_unit="°C"
+	GRAPH_color="FF0000"
+	GRAPH_width="1"
 }
 
 # <- END _functions
@@ -344,28 +247,20 @@ GRAPH_file_root="$(echo "${GRAPH_file_root}" | tr -s '/')"
 # Read definitions folder
 for file in $(ls ${CONFIG_graph_dir_defs}/*.${CONFIG_graph_ext_def} 2>/dev/null)
 do
+	# Set default graph parameters
+	default_graphvars
 	# Read graph parameters
-	init_graphvars -I
 	source "$file"
 	GRAPH_tag=$(basename $file ".${CONFIG_graph_ext_def}")
 	# Create graph picture file
 	GRAPH_file="${GRAPH_file_root}_${GRAPH_tag}.${CONFIG_graph_ext_pic}"
 	echo_text -s -$CONST_level_verbose_info "${GRAPH_file}"
-	create_graph_line \
-		-t "${GRAPH_title}" \
-		-d "${GRAPH_data}" \
-		-f "${GRAPH_fnc}" \
-		-l "${GRAPH_label}" \
-		-u "${GRAPH_unit}" \
-		-c "${GRAPH_color}" \
-		-w "${GRAPH_width}" \
-		-s "${GRAPH_start}" \
-	"${GRAPH_file}"
+	create_graph_line "${GRAPH_file}"
 	# Create graph description file
 	if [ -n "${GRAPH_desc}" ]
 	then
 		GRAPH_file+=".${CONFIG_graph_ext_dsc}"
-		# Chech if there is a new description
+		# Check if there is a new description
 		if [[ ! -f "${GRAPH_file}" \
 		|| "$(echo "${GRAPH_desc}" | md5sum | awk '1 {print $1}')" \
 		!= "$( md5sum "${GRAPH_file}" | awk '1 {print $1}')" ]]
@@ -376,10 +271,18 @@ do
 	fi
 done
 
-# Change ownership of all graph files
+# Change ownership of all graph and description files
 if [ $CONFIG_flag_dryrun -eq 0 ]
 then
-	chown ${CONFIG_graph_owner}:${CONFIG_graph_group} "${GRAPH_file_root}"*."${CONFIG_graph_ext_pic}" >/dev/null
-	chown ${CONFIG_graph_owner}:${CONFIG_graph_group} "${GRAPH_file_root}"*."${CONFIG_graph_ext_pic}.${CONFIG_graph_ext_dsc}" >/dev/null
+	filemasks=(	"${GRAPH_file_root}*.${CONFIG_graph_ext_pic}" \
+				"${GRAPH_file_root}*.${CONFIG_graph_ext_pic}.${CONFIG_graph_ext_dsc}" \
+			)
+	for mask in "${filemasks[@]}"
+	do
+		if ls $mask 1>/dev/null 2>&1 
+		then
+			chown ${CONFIG_graph_owner}:${CONFIG_graph_group} $mask 2>/dev/null
+		fi
+	done
 fi
 # End of script processed by TRAP
