@@ -53,7 +53,7 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.4.2"
+CONFIG_version="0.4.3"
 CONFIG_commands=('rrdtool' 'chown' 'awk' 'md5sum') # List of commands for full running
 #
 CONFIG_rrd_file="${CONFIG_script%\.*}.rrd"	# Round Robin Database file
@@ -94,7 +94,9 @@ $(process_help -f)
 create_graph_line () {
 	local system="$(hostname)"
 	local title="${system^^*}"
-	local graph_cmd vname j
+	local graph_cmd vname
+	local last_fnc last_label last_unit last_color last_width
+
 	# Casting graph parameters lists to arrays
 	GRAPH_start=( $GRAPH_start )
 	GRAPH_data=( $GRAPH_data )
@@ -116,31 +118,30 @@ create_graph_line () {
 	# Process graphs variables
 	for (( i=0; i < ${#GRAPH_data[@]}; i++ ))
 	do
-		# Syncronize graph parameters arrays with data array
-		(( j = i - 1 ))
+		# Synchronize graph parameters arrays with data array
 		vname=${GRAPH_data[$i]}_01
-		GRAPH_fnc[$i]=${GRAPH_fnc[$i]:=${GRAPH_fnc[$j]}}
-		GRAPH_label[$i]=${GRAPH_label[$i]:=${GRAPH_label[$j]}}
-		GRAPH_unit[$i]=${GRAPH_unit[$i]:=${GRAPH_unit[$j]}}
-		GRAPH_color[$i]=${GRAPH_color[$i]:=${GRAPH_color[$j]}}
-		GRAPH_width[$i]=${GRAPH_width[$i]:=${GRAPH_width[$j]}}
+		last_fnc=${GRAPH_fnc[$i]:-$last_fnc}
+		last_label=${GRAPH_label[$i]:-$last_label}
+		last_unit=${GRAPH_unit[$i]:-$last_unit}
+		last_color=${GRAPH_color[$i]:-$last_color}
+		last_width=${GRAPH_width[$i]:-$last_width}
 		# Check variable presence in RRD
 		echo_text -fp -$CONST_level_verbose_function "Checking variable '${GRAPH_data[$i]}' ... "
-		rrdtool fetch "${CONFIG_rrd_file}" ${GRAPH_fnc[$i]} --start end+0 | head -1 | grep -w ${GRAPH_data[$i]} >/dev/null
+		rrdtool fetch "${CONFIG_rrd_file}" ${last_fnc} --start end+0 | head -1 | grep -w ${GRAPH_data[$i]} >/dev/null
 		if [ $? -eq 0 ]
 		then
 			echo_text -$CONST_level_verbose_function "valid. Proceeding."
 		else
 			echo_text -$CONST_level_verbose_function "invalid. Ignoring."
-			break
+			continue
 		fi
 		# Create data clauses
-		graph_cmd+=" DEF:${GRAPH_data[$i]}=${CONFIG_rrd_file}:${GRAPH_data[$i]}:${GRAPH_fnc[$i]}"
+		graph_cmd+=" DEF:${GRAPH_data[$i]}=${CONFIG_rrd_file}:${GRAPH_data[$i]}:${last_fnc}"
 		graph_cmd+=" CDEF:${vname}=${GRAPH_data[$i]},1000,/"
-		graph_cmd+=" LINE${GRAPH_width[$i]}:${vname}#${GRAPH_color[$i]}:\"${GRAPH_label[$i]}\c\""
-		graph_cmd+=" GPRINT:${vname}:MIN:\"Min\: %3.1lf${GRAPH_unit[$i]}\""
-		graph_cmd+=" GPRINT:${vname}:LAST:\"%3.1lf${GRAPH_unit[$i]}\""
-		graph_cmd+=" GPRINT:${vname}:MAX:\"Max\: %3.1lf${GRAPH_unit[$i]}\j\""
+		graph_cmd+=" LINE${last_width}:${vname}#${last_color}:\"${last_label}\c\""
+		graph_cmd+=" GPRINT:${vname}:MIN:\"Min\: %3.1lf${last_unit}\""
+		graph_cmd+=" GPRINT:${vname}:LAST:\"%3.1lf${last_unit}\""
+		graph_cmd+=" GPRINT:${vname}:MAX:\"Max\: %3.1lf${last_unit}\j\""
 	done
 	# echo_text -f -$CONST_level_verbose_function "$graph_cmd"
 	eval ${graph_cmd} >/dev/null
