@@ -53,7 +53,7 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.4.3"
+CONFIG_version="0.4.4"
 CONFIG_commands=('rrdtool' 'chown' 'awk' 'md5sum') # List of commands for full running
 #
 CONFIG_rrd_file="${CONFIG_script%\.*}.rrd"	# Round Robin Database file
@@ -94,17 +94,19 @@ $(process_help -f)
 create_graph_line () {
 	local system="$(hostname)"
 	local title="${system^^*}"
-	local graph_cmd vname
-	local last_fnc last_label last_unit last_color last_width
+	local graph_cmd vname draw_cmd
+	local last_fnc last_rpn last_label last_unit last_color last_width last_cmd
 
 	# Casting graph parameters lists to arrays
 	GRAPH_start=( $GRAPH_start )
 	GRAPH_data=( $GRAPH_data )
 	GRAPH_fnc=( $GRAPH_fnc )
+	GRAPH_rpn=( $GRAPH_rpn )
 	GRAPH_label=( $GRAPH_label )
 	GRAPH_unit=( $GRAPH_unit )
 	GRAPH_color=( $GRAPH_color )
 	GRAPH_width=( $GRAPH_width )
+	GRAPH_cmd=( $GRAPH_cmd )
 	# Creating graph command
 	echo_text -f -$CONST_level_verbose_function "Creating RRD graph '${GRAPH_file}'$(dryrun_token)."
 	graph_cmd="rrdtool graph ${GRAPH_file}"
@@ -121,10 +123,12 @@ create_graph_line () {
 		# Synchronize graph parameters arrays with data array
 		vname=${GRAPH_data[$i]}_01
 		last_fnc=${GRAPH_fnc[$i]:-$last_fnc}
+		last_rpn=${GRAPH_rpn[$i]:-$last_rpn}
 		last_label=${GRAPH_label[$i]:-$last_label}
 		last_unit=${GRAPH_unit[$i]:-$last_unit}
 		last_color=${GRAPH_color[$i]:-$last_color}
 		last_width=${GRAPH_width[$i]:-$last_width}
+		last_cmd=${GRAPH_cmd[$i]:-$last_cmd}
 		# Check variable presence in RRD
 		echo_text -fp -$CONST_level_verbose_function "Checking variable '${GRAPH_data[$i]}' ... "
 		rrdtool fetch "${CONFIG_rrd_file}" ${last_fnc} --start end+0 | head -1 | grep -w ${GRAPH_data[$i]} >/dev/null
@@ -135,10 +139,16 @@ create_graph_line () {
 			echo_text -$CONST_level_verbose_function "invalid. Ignoring."
 			continue
 		fi
+		# Create draw command
+		draw_cmd=$last_cmd
+		if [ $last_cmd == "LINE" ]
+		then
+			draw_cmd+=$last_width
+		fi
 		# Create data clauses
 		graph_cmd+=" DEF:${GRAPH_data[$i]}=${CONFIG_rrd_file}:${GRAPH_data[$i]}:${last_fnc}"
-		graph_cmd+=" CDEF:${vname}=${GRAPH_data[$i]},1000,/"
-		graph_cmd+=" LINE${last_width}:${vname}#${last_color}:\"${last_label}\c\""
+		graph_cmd+=" CDEF:${vname}=${GRAPH_data[$i]}${last_rpn}"
+		graph_cmd+=" ${last_cmd}:${vname}#${last_color}:\"${last_label}\c\""
 		graph_cmd+=" GPRINT:${vname}:MIN:\"Min\: %3.1lf${last_unit}\""
 		graph_cmd+=" GPRINT:${vname}:LAST:\"%3.1lf${last_unit}\""
 		graph_cmd+=" GPRINT:${vname}:MAX:\"Max\: %3.1lf${last_unit}\j\""
@@ -157,11 +167,13 @@ default_graphvars () {
 	GRAPH_desc=""
 	GRAPH_start="-1d"
 	GRAPH_data="temp1"
+	GRAPH_rpn=",1000,/"
 	GRAPH_fnc="AVERAGE"
 	GRAPH_label="Temperature"
 	GRAPH_unit="°C"
 	GRAPH_color="FF0000"
 	GRAPH_width="1"
+	GRAPH_cmd="LINE"
 }
 
 # <- END _functions
