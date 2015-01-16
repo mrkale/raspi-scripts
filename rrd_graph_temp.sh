@@ -53,7 +53,7 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.4.4"
+CONFIG_version="0.4.5"
 CONFIG_commands=('rrdtool' 'chown' 'awk' 'md5sum') # List of commands for full running
 #
 CONFIG_rrd_file="${CONFIG_script%\.*}.rrd"	# Round Robin Database file
@@ -117,6 +117,7 @@ create_graph_line () {
 	graph_cmd+=" --alt-autoscale"
 	graph_cmd+=" --alt-y-grid"
 	# graph_cmd+=" --slope-mode"
+	graph_cmd+=" ${GRAPH_other}"
 	# Process graphs variables
 	for (( i=0; i < ${#GRAPH_data[@]}; i++ ))
 	do
@@ -165,6 +166,7 @@ default_graphvars () {
 	GRAPH_title="Temperature Graph"
 	GRAPH_axisy="Measurement"
 	GRAPH_desc=""
+	GRAPH_other=""
 	GRAPH_start="-1d"
 	GRAPH_data="temp1"
 	GRAPH_rpn=",1000,/"
