@@ -52,8 +52,8 @@ then
 fi
 
 # -> BEGIN _config
-CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.4.5"
+CONFIG_copyright="(c) 2014-2015 Libor Gabaj <libor.gabaj@gmail.com>"
+CONFIG_version="0.5.0"
 CONFIG_commands=('rrdtool' 'chown' 'awk' 'md5sum') # List of commands for full running
 #
 CONFIG_rrd_file="${CONFIG_script%\.*}.rrd"	# Round Robin Database file
@@ -64,6 +64,7 @@ CONFIG_graph_ext_def="gdf"	# Graph definition file extension
 CONFIG_graph_ext_dsc="txt"	# Graph description file extension
 CONFIG_graph_owner="www-data"	# Graph picture file owner to set after generation
 CONFIG_graph_group="www-data"	# Graph picture file group to set after generation
+CONFIG_graph_file_sep="--"	# Separator in picture file separating RRD name from graph name
 # <- END _config
 
 # -> BEGIN _functions
@@ -242,14 +243,15 @@ show_configs
 
 # -> Script execution
 trap stop_script EXIT
+
+msg="Graphs from '${CONFIG_rrd_file}' generated to '${CONFIG_graph_dir_target}'."
 if [ -n "$CONFIG_status" ]
 then
-	msg="Generated graphs in '${CONFIG_graph_dir_target}' from '${CONFIG_rrd_file}'."
 	echo_text -s -$CONST_level_verbose_info "Writing to status file '$CONFIG_status'."
 	echo_text -ISL -$CONST_level_verbose_none "$msg" > "$CONFIG_status"
 fi
 
-echo_text -h -$CONST_level_verbose_info "Generating graph files to '${CONFIG_graph_dir_target}' from '${CONFIG_rrd_file}':"
+echo_text -h -$CONST_level_verbose_info "${msg}':"
 # Set graph file base
 if [ $CONFIG_flag_dryrun -eq 1 ]
 then
@@ -268,7 +270,7 @@ do
 	source "$file"
 	GRAPH_tag=$(basename $file ".${CONFIG_graph_ext_def}")
 	# Create graph picture file
-	GRAPH_file="${GRAPH_file_root}_${GRAPH_tag}.${CONFIG_graph_ext_pic}"
+	GRAPH_file="${GRAPH_file_root}${CONFIG_graph_file_sep}${GRAPH_tag}.${CONFIG_graph_ext_pic}"
 	echo_text -s -$CONST_level_verbose_info "${GRAPH_file}"
 	create_graph_line "${GRAPH_file}"
 	# Create graph description file
