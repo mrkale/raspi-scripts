@@ -53,7 +53,7 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014-2015 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.5.0"
+CONFIG_version="0.6.0"
 CONFIG_commands=('rrdtool' 'chown' 'awk' 'md5sum') # List of commands for full running
 #
 CONFIG_rrd_file="${CONFIG_script%\.*}.rrd"	# Round Robin Database file
@@ -123,7 +123,8 @@ create_graph_line () {
 	for (( i=0; i < ${#GRAPH_data[@]}; i++ ))
 	do
 		# Synchronize graph parameters arrays with data array
-		vname=${GRAPH_data[$i]}_01
+		dname=${GRAPH_data[$i]}_$i
+		vname=${dname}_v
 		last_fnc=${GRAPH_fnc[$i]:-$last_fnc}
 		last_rpn=${GRAPH_rpn[$i]:-$last_rpn}
 		last_label=${GRAPH_label[$i]:-$last_label}
@@ -148,8 +149,8 @@ create_graph_line () {
 			draw_cmd+=$last_width
 		fi
 		# Create data clauses
-		graph_cmd+=" DEF:${GRAPH_data[$i]}=${CONFIG_rrd_file}:${GRAPH_data[$i]}:${last_fnc}"
-		graph_cmd+=" CDEF:${vname}=${GRAPH_data[$i]}${last_rpn}"
+		graph_cmd+=" DEF:${dname}=${CONFIG_rrd_file}:${GRAPH_data[$i]}:${last_fnc}"
+		graph_cmd+=" CDEF:${vname}=${dname}${last_rpn}"
 		graph_cmd+=" ${last_cmd}:${vname}#${last_color}:\"${last_label}\c\""
 		graph_cmd+=" GPRINT:${vname}:MIN:\"Min\: %3.1lf${last_unit}\""
 		graph_cmd+=" GPRINT:${vname}:LAST:\"%3.1lf${last_unit}\""
