@@ -96,9 +96,9 @@ then
 fi
 
 # -> BEGIN _config
-CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.5.0"
-CONFIG_commands=('grep' 'awk' 'ip' 'ping') # Array of generally needed commands
+CONFIG_copyright="(c) 2014-2015 Libor Gabaj <libor.gabaj@gmail.com>"
+CONFIG_version="0.6.0"
+CONFIG_commands=('grep' 'awk' 'ip' 'ping' 'head') # Array of generally needed commands
 CONFIG_commands_run=('curl' 'ifdown' 'ifup' 'reboot') # List of commands for full running
 CONFIG_flag_root=1	# Check root privileges flag
 #
@@ -337,7 +337,7 @@ else
 fi
 
 # Check connection to gateway
-TestIP="$(ip route | awk '/default/ { print $3 }')"
+TestIP="$(ip route | awk '/default/ { print $3 }' | head -1)"
 echo_text -h -$CONST_level_verbose_info "Checking internal connection ... '${TestIP}'."
 if [ $CONFIG_flag_force_fail_int -eq 1 ]
 then
