@@ -55,9 +55,9 @@ then
 fi
 
 # -> BEGIN _config
-CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.4.0"
-CONFIG_commands=('rrdtool') # List of general commands
+CONFIG_copyright="(c) 2014-16 Libor Gabaj <libor.gabaj@gmail.com>"
+CONFIG_version="0.5.0"
+CONFIG_commands=('rrdtool awk') # List of general commands
 CONFIG_commands_run=('curl') # List of commands for full running
 #
 CONFIG_fieldnum_min=1
@@ -66,7 +66,7 @@ CONFIG_sensors_soc=1	# System sensor fieldnum
 declare -a CONFIG_sensors_ds18b20=()	# [fieldnum]=address
 CONFIG_thingspeak_url="https://api.thingspeak.com/update"
 CONFIG_thingspeak_apikey=""
-CONFIG_flag_print_sensors=0              # List sensor parameters flag
+CONFIG_flag_print_sensors=0	# List sensor parameters flag
 CONFIG_rrd_file="${CONFIG_script%\.*}.rrd"	# Round Robin Database file
 CONFIG_rrd_step=300	# Round Robin Database base data feeding interval
 CONFIG_rrd_hartbeat=2	# Round Robin Database hartbeat interval as a multiplier of the step
@@ -161,7 +161,8 @@ write_thingspeak () {
 			temp="${temp// }"
 			if [[ -n "$temp" && ${#temp} -ge 3 ]]
 			then
-				temp="${temp:0:${#temp}-3}.${temp:${#temp}-3}"
+				# Convert from milidegrees to centigrades
+				temp=$(echo "${temp} 1000"|awk '{print $1/$2}')
 				reqdata+="&field${fieldnum}=${temp}"
 			fi
 		fi
@@ -209,7 +210,7 @@ write_thingspeak () {
 #	Daily maximals for last 180 days
 #	Daily minimals for last 7 days
 #	Daily minimals for last 30 days
-#	Daily minimals for last 180 days	
+#	Daily minimals for last 180 days
 # @args:	SENSOR_temps indexed array temp[fieldnum]
 # @return:	none
 # @deps:	none
