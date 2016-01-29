@@ -56,7 +56,7 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014-16 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.5.0"
+CONFIG_version="0.6.0"
 CONFIG_commands=('rrdtool awk') # List of general commands
 CONFIG_commands_run=('curl') # List of commands for full running
 #
@@ -159,7 +159,7 @@ write_thingspeak () {
 		then
 			temp=${SENSOR_temps[$fieldnum]}
 			temp="${temp// }"
-			if [[ -n "$temp" && ${#temp} -ge 3 ]]
+			if [[ -n "$temp" ]]
 			then
 				# Convert from milidegrees to centigrades
 				temp=$(echo "${temp} 1000"|awk '{print $1/$2}')
