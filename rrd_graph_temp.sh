@@ -52,8 +52,8 @@ then
 fi
 
 # -> BEGIN _config
-CONFIG_copyright="(c) 2014-2015 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.6.0"
+CONFIG_copyright="(c) 2014-16 Libor Gabaj <libor.gabaj@gmail.com>"
+CONFIG_version="0.7.0"
 CONFIG_commands=('rrdtool' 'chown' 'awk' 'md5sum') # List of commands for full running
 #
 CONFIG_rrd_file="${CONFIG_script%\.*}.rrd"	# Round Robin Database file
@@ -96,8 +96,7 @@ create_graph_line () {
 	local system="$(hostname)"
 	local title="${system^^*}"
 	local graph_cmd vname draw_cmd
-	local last_fnc last_rpn last_label last_unit last_color last_width last_cmd
-
+	local last_fnc last_rpn last_label last_unit last_color last_width last_cmd last_maxlimit
 	# Casting graph parameters lists to arrays
 	GRAPH_start=( $GRAPH_start )
 	GRAPH_data=( $GRAPH_data )
@@ -108,6 +107,7 @@ create_graph_line () {
 	GRAPH_color=( $GRAPH_color )
 	GRAPH_width=( $GRAPH_width )
 	GRAPH_cmd=( $GRAPH_cmd )
+	GRAPH_maxlimit=( $GRAPH_maxlimit )
 	# Creating graph command
 	echo_text -f -$CONST_level_verbose_function "Creating RRD graph '${GRAPH_file}'$(dryrun_token)."
 	graph_cmd="rrdtool graph ${GRAPH_file}"
@@ -132,6 +132,7 @@ create_graph_line () {
 		last_color=${GRAPH_color[$i]:-$last_color}
 		last_width=${GRAPH_width[$i]:-$last_width}
 		last_cmd=${GRAPH_cmd[$i]:-$last_cmd}
+		last_maxlimit=${GRAPH_maxlimit[$i]:-$last_maxlimit}
 		# Check variable presence in RRD
 		echo_text -fp -$CONST_level_verbose_function "Checking variable '${GRAPH_data[$i]}' ... "
 		rrdtool fetch "${CONFIG_rrd_file}" ${last_fnc} --start end+0 | head -1 | grep -w ${GRAPH_data[$i]} >/dev/null
@@ -150,13 +151,13 @@ create_graph_line () {
 		fi
 		# Create data clauses
 		graph_cmd+=" DEF:${dname}=${CONFIG_rrd_file}:${GRAPH_data[$i]}:${last_fnc}"
-		graph_cmd+=" CDEF:${vname}=${dname}${last_rpn}"
+		graph_cmd+=" CDEF:${vname}=${dname},${last_maxlimit},LT,${dname},UNKN,IF${last_rpn}"
 		graph_cmd+=" ${last_cmd}:${vname}#${last_color}:\"${last_label}\c\""
 		graph_cmd+=" GPRINT:${vname}:MIN:\"Min\: %3.1lf${last_unit}\""
 		graph_cmd+=" GPRINT:${vname}:LAST:\"%3.1lf${last_unit}\""
 		graph_cmd+=" GPRINT:${vname}:MAX:\"Max\: %3.1lf${last_unit}\j\""
 	done
-	# echo_text -f -$CONST_level_verbose_function "$graph_cmd"
+	echo_text -f -$CONST_level_verbose_function "$graph_cmd"
 	eval ${graph_cmd} >/dev/null
 }
 
@@ -178,6 +179,7 @@ default_graphvars () {
 	GRAPH_color="FF0000"
 	GRAPH_width="1"
 	GRAPH_cmd="LINE"
+	GRAPH_maxlimit="80000"
 }
 
 # <- END _functions
