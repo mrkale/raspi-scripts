@@ -35,7 +35,8 @@ It sends the status of connection to Google Analytics and logs it into the syste
 - For security reasons the Google Analytics tracking and client ids should be written
   only in configuration file. Putting them to a command line does not prevent them
   to be revealed by cron in email messages as a subject.
-- In simulation mode the script does not send events to Google Analytics.
+- If the Google Analytics tracking or client id is empty, the script does not send
+  events to Google Analytics as well as in simulation mode.
 
 Options and arguments
 =====

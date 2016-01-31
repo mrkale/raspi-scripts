@@ -20,7 +20,8 @@
 # - For security reasons the Google Analytics tracking and client ids should be written
 #   only in configuration file. Putting them to a command line does not prevent them
 #   to be revealed by cron in email messages as a subject.
-# - In simulation mode the script does not send events to Google Analytics.
+# - If the Google Analytics tracking or client id is empty, the script does not send
+#   events to Google Analytics as well as in simulation mode.
 #
 # OPTIONS & ARGS:
 #   -h
@@ -96,17 +97,17 @@ then
 fi
 
 # -> BEGIN _config
-CONFIG_copyright="(c) 2014-2015 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.6.0"
+CONFIG_copyright="(c) 2014-16 Libor Gabaj <libor.gabaj@gmail.com>"
+CONFIG_version="0.7.0"
 CONFIG_commands=('grep' 'awk' 'ip' 'ping' 'head') # Array of generally needed commands
 CONFIG_commands_run=('curl' 'ifdown' 'ifup' 'reboot') # List of commands for full running
 CONFIG_flag_root=1	# Check root privileges flag
 #
 CONFIG_pings=4	# Number of pings to test an interface
-CONFIG_google_ip="213.151.210.24"	# External test IP address of Google, inc.
+CONFIG_google_ip="8.8.4.4"	# External test IP address of Google, inc.
 CONFIG_ga_req="http://www.google-analytics.com/collect"	# Google Analytics request
-CONFIG_ga_tid="UA-XXXX-Y"	# Google Analytics track id - should be in an input argument
-CONFIG_ga_cid="0"	# Google Analytics client id - UUID v4
+CONFIG_ga_tid=""	# Google Analytics track id - should be in an input argument - UA-XXXX-Y
+CONFIG_ga_cid=""	# Google Analytics client id - UUID v4
 CONFIG_ga_ec=$(hostname)	# Google Analytics event category - hostname
 CONFIG_ga_ea="${CONFIG_script%\.*}"
 CONFIG_ga_ea="${CONFIG_ga_ea^^*}"	# Google Analytics event action - root script's name
@@ -155,6 +156,12 @@ $(process_help -f)
 # @return:	(none)
 # @deps:	(none)
 ga_event () {
+	if [ -z "${CONFIG_ga_tid}" -o -z "${CONFIG_ga_cid}" ]
+	then
+		echo_text -h -$CONST_level_verbose_function "Logging to Google Analytics$(dryrun_token) ... suppressed."
+		return
+	fi
+
 	echo_text -h -$CONST_level_verbose_function "Logging to Google Analytics$(dryrun_token) ... ${CONFIG_ga_el} ... ${CONFIG_ga_ev}"
 	if [[ $CONFIG_flag_dryrun -eq 0 ]]
 	then
@@ -463,7 +470,10 @@ then
 			echo_text -h -$CONST_level_verbose_mail "${LOG_os_msg} ... ${LOG_os_restarts}x before."
 			log_text -$CONST_level_logging_error "${LOG_os_msg} ... ${LOG_os_restarts}x before."
 		fi
-		echo_text -h -$CONST_level_verbose_mail "Logged to Google Analytics."
+		if [ -n "${CONFIG_ga_tid}" -a -n "${CONFIG_ga_cid}" ]
+		then
+			echo_text -h -$CONST_level_verbose_mail "Logged to Google Analytics."
+		fi
 		echo_text -$CONST_level_verbose_mail
 		init_logvars -I
 	fi
@@ -475,7 +485,10 @@ then
 		ga_event
 		echo_text -h -$CONST_level_verbose_mail "${LOG_ext_msg} ... ${LOG_ext_fails}x before."
 		echo_text -s -$CONST_level_verbose_mail "For ${LOG_ext_fails_period_time} ... from ${LOG_ext_fails_start_time} to ${LOG_ext_fails_stop_time}."
-		echo_text -s -$CONST_level_verbose_mail "Logged to Google Analytics."
+		if [ -n "${CONFIG_ga_tid}" -a -n "${CONFIG_ga_cid}" ]
+		then
+			echo_text -s -$CONST_level_verbose_mail "Logged to Google Analytics."
+		fi
 		echo_text -s -$CONST_level_verbose_mail
 		log_text -$CONST_level_logging_error "${LOG_ext_msg} ... ${LOG_ext_fails}x before ... for ${LOG_ext_fails_period_time} ... from ${LOG_ext_fails_start_time} to ${LOG_ext_fails_stop_time}."
 		init_logvars -E
