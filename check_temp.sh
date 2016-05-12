@@ -93,8 +93,8 @@ then
 fi
 
 # -> BEGIN _config
-CONFIG_copyright="(c) 2014 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.5.0"
+CONFIG_copyright="(c) 2014-2016 Libor Gabaj <libor.gabaj@gmail.com>"
+CONFIG_version="0.6.0"
 #
 CONFIG_warning_perc=80                   # Percentage of maximal limit for warning - should be integer
 CONFIG_shutdown_perc=95                  # Percentage of maximal limit for shutting down - should be integer
@@ -107,19 +107,27 @@ CONFIG_flag_force_maximum=0              # Force maximal temperature flag
 # <- BEGIN _sensors
 # Board sensor temperature in milidegrees Celsius
 SENSOR_temp_current=$(cat /sys/class/thermal/thermal_zone0/temp)
-SENSOR_temp_current_text="Current temperature ${SENSOR_temp_current:0:2}.${SENSOR_temp_current:2} 'C"
+if [[ ${SENSOR_temp_current} -lt 100 ]]
+then
+	SENSOR_temp_current=$(echo ${SENSOR_temp_current} | awk '{printf("%d", $1 * 1000)}')
+fi
+SENSOR_temp_current_text=$(echo "Current temperature" $(echo ${SENSOR_temp_current} | awk '{printf("%.1f", $1 / 1000)}') "'C")
 
 # Temperature technical limit
 SENSOR_temp_maximal=$(cat /sys/class/thermal/thermal_zone0/trip_point_0_temp)
-SENSOR_temp_maximal_text="Maximal temperature ${SENSOR_temp_maximal:0:2}.${SENSOR_temp_maximal:2} 'C"
+if [[ ${SENSOR_temp_maximal} -lt 100 ]]
+then
+        SENSOR_temp_maximal=$(echo "${SENSOR_temp_maximal}" | awk '{printf("%d", $1 * 1000)}')
+fi
+SENSOR_temp_maximal_text=$(echo "Current temperature" $(echo ${SENSOR_temp_maximal} | awk '{printf("%.1f", $1 / 1000)}') "'C")
 
 # Temperature limit for warning
-SENSOR_temp_warning=$((SENSOR_temp_maximal * CONFIG_warning_perc / 100))
-SENSOR_temp_warning_text="Warning temperature ${SENSOR_temp_warning:0:2}.${SENSOR_temp_warning:2} 'C"
+SENSOR_temp_warning=$(echo "${SENSOR_temp_maximal} ${CONFIG_warning_perc}" | awk '{printf("%d", $1 * $2 / 100)}')
+SENSOR_temp_warning_text=$(echo "Current temperature" $(echo ${SENSOR_temp_warning} | awk '{printf("%.1f", $1 / 1000)}') "'C")
 
 # Temperature limit for shutdown
-SENSOR_temp_shutdown=$((SENSOR_temp_maximal * CONFIG_shutdown_perc / 100))
-SENSOR_temp_shutdown_text="Halting temperature ${SENSOR_temp_shutdown:0:2}.${SENSOR_temp_shutdown:2} 'C"
+SENSOR_temp_shutdown=$(echo "${SENSOR_temp_maximal} ${CONFIG_shutdown_perc}" | awk '{printf("%d", $1 * $2 / 100)}')
+SENSOR_temp_shutdown_text=$(echo "Current temperature" $(echo ${SENSOR_temp_shutdown} | awk '{printf("%.1f", $1 / 1000)}') "'C")
 # <- END _sensors
 
 # -> BEGIN _functions
