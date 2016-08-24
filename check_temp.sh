@@ -94,7 +94,7 @@ fi
 
 # -> BEGIN _config
 CONFIG_copyright="(c) 2014-2016 Libor Gabaj <libor.gabaj@gmail.com>"
-CONFIG_version="0.6.0"
+CONFIG_version="0.6.1"
 #
 CONFIG_warning_perc=80                   # Percentage of maximal limit for warning - should be integer
 CONFIG_shutdown_perc=95                  # Percentage of maximal limit for shutting down - should be integer
@@ -119,15 +119,15 @@ if [[ ${SENSOR_temp_maximal} -lt 100 ]]
 then
         SENSOR_temp_maximal=$(echo "${SENSOR_temp_maximal}" | awk '{printf("%d", $1 * 1000)}')
 fi
-SENSOR_temp_maximal_text=$(echo "Current temperature" $(echo ${SENSOR_temp_maximal} | awk '{printf("%.1f", $1 / 1000)}') "'C")
+SENSOR_temp_maximal_text=$(echo "Maximal temperature" $(echo ${SENSOR_temp_maximal} | awk '{printf("%.1f", $1 / 1000)}') "'C")
 
 # Temperature limit for warning
 SENSOR_temp_warning=$(echo "${SENSOR_temp_maximal} ${CONFIG_warning_perc}" | awk '{printf("%d", $1 * $2 / 100)}')
-SENSOR_temp_warning_text=$(echo "Current temperature" $(echo ${SENSOR_temp_warning} | awk '{printf("%.1f", $1 / 1000)}') "'C")
+SENSOR_temp_warning_text=$(echo "Warning temperature" $(echo ${SENSOR_temp_warning} | awk '{printf("%.1f", $1 / 1000)}') "'C")
 
 # Temperature limit for shutdown
 SENSOR_temp_shutdown=$(echo "${SENSOR_temp_maximal} ${CONFIG_shutdown_perc}" | awk '{printf("%d", $1 * $2 / 100)}')
-SENSOR_temp_shutdown_text=$(echo "Current temperature" $(echo ${SENSOR_temp_shutdown} | awk '{printf("%.1f", $1 / 1000)}') "'C")
+SENSOR_temp_shutdown_text=$(echo "Shutdown temperature" $(echo ${SENSOR_temp_shutdown} | awk '{printf("%.1f", $1 / 1000)}') "'C")
 # <- END _sensors
 
 # -> BEGIN _functions
@@ -140,7 +140,7 @@ show_help () {
 	echo
 	echo "${CONFIG_script} [OPTION [ARG]]"
 	echo "
-Check temperature of the Broadcom SoC and shutdown at overheating
+Check temperature of the SoC and shutdown at overheating
 over the shutdown temperature or warn at warning temperature.
 
 Warning temperature is the percentage (${CONFIG_warning_perc}%) of maximal limit.
